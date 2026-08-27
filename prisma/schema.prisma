@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- RBAC -------------------------------------------------------------
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique // "admin", "writer", "reader"
+  description String?
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique // "post.create", "post.publish", "confession.moderate", ...
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// --- Users --------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  nickname     String    @unique
+  passwordHash String
+  roleId       String
+  role         Role      @relation(fields: [roleId], references: [id])
+  posts        Post[]
+  comments     Comment[]
+  createdAt    DateTime  @default(now())
+}
+
+// --- Blog -----------------------------------------------------------------
+
+model Post {
+  id        String      @id @default(cuid())
+  slug      String      @unique
+  title     String
+  body      String
+  published Boolean     @default(false)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id])
+  comments  Comment[]
+  embeds    PostEmbed[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+enum EmbedProvider {
+  YOUTUBE
+  INSTAGRAM
+}
+
+model PostEmbed {
+  id         String        @id @default(cuid())
+  postId     String
+  post       Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  provider   EmbedProvider
+  url        String
+  externalId String
+  position   Int           @default(0)
+  createdAt  DateTime      @default(now())
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// --- Confessions -----------------------------------------------------------
+
+model Confession {
+  id         String               @id @default(cuid())
+  body       String
+  ipHash     String? // hashed, only for rate-limit/abuse detection, never displayed
+  approved   Boolean              @default(true)
+  likesCount Int                  @default(0)
+  feelsCount Int                  @default(0)
+  comments   ConfessionComment[]
+  reactions  ConfessionReaction[]
+  createdAt  DateTime             @default(now())
+}
+
+model ConfessionComment {
+  id           String     @id @default(cuid())
+  body         String
+  confessionId String
+  confession   Confession @relation(fields: [confessionId], references: [id], onDelete: Cascade)
+  ipHash       String? // mesma lógica do Confession.ipHash — só anti-abuso
+  createdAt    DateTime   @default(now())
+}
+
+enum ReactionType {
+  LIKE
+  FEEL
+}
+
+// Dedup de like/feel por visitante anônimo: sem ipHash aqui, qualquer um
+// clica infinitas vezes (era assim no vulnerav-mural antigo). O par
+// (confessionId, ipHash, type) só pode existir uma vez.
+model ConfessionReaction {
+  id           String       @id @default(cuid())
+  confessionId String
+  confession   Confession   @relation(fields: [confessionId], references: [id], onDelete: Cascade)
+  ipHash       String
+  type         ReactionType
+  createdAt    DateTime     @default(now())
+
+  @@unique([confessionId, ipHash, type])
+}

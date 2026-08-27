@@ -1,26 +1,352 @@
 @import "tailwindcss";
 
+/* Paleta e tipografia herdadas do vulnerav-mural (versão antiga das
+   confissões): papel quente, dourado terroso, serifas editoriais.
+   O dourado (accent-*) fica igual nos dois temas — no mural antigo o
+   mesmo tom já funcionava tanto no corpo claro quanto no hero escuro. */
+@theme {
+  --color-paper: #f7f5f2;
+  --color-surface: #ffffff;
+
+  --color-ink: #201f1d;
+  --color-ink-muted: #6b6965;
+
+  --color-accent-300: #d9b689;
+  --color-accent-500: #b68235;
+  --color-accent-600: #9c6f2c;
+  --color-accent-700: #8a6427;
+  --color-accent-900: #5e4419;
+
+  --color-line: #e2dfda;
+  --color-danger: #b3261e;
+
+  --font-heading: var(--font-cormorant), "Cormorant Garamond", serif;
+  --font-body: var(--font-newsreader), "Newsreader", serif;
+  --font-sans: var(--font-plex), "IBM Plex Sans", sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --shadow-card:
+    0 20px 45px -15px rgba(32, 25, 15, 0.18),
+    0 4px 10px -4px rgba(32, 25, 15, 0.1);
+
+  /* Papéis flutuantes de /confissoes: no claro usam o dourado (papel
+     envelhecido); no escuro usam ink (replica o mural antigo, que já
+     tinha o tom certo — ver overrides abaixo). */
+  --scrap-tint: var(--color-accent-500);
+  --scrap-strength: 12%;
+
+  /* Cor dos ícones de reação (curtir / sinto isso também) no hover e
+     quando já ativados — mais escura no claro (contrasta bem no papel
+     claro), mais clara no escuro (ver overrides abaixo). */
+  --icon-accent: var(--color-accent-700);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark mode: segue o sistema por padrão. Um data-theme explícito
+   (setado pelo ThemeToggle, lido do localStorage antes do paint —
+   ver o script inline em layout.tsx) sobrepõe a preferência do SO. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --color-paper: #1b1812;
+    --color-surface: #242019;
+    --color-ink: #f3f2ee;
+    --color-ink-muted: #a8a29a;
+    --color-line: #3a352c;
+    --color-danger: #e0776e;
+    --shadow-card:
+      0 20px 50px -12px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+    --scrap-tint: var(--color-ink);
+    --scrap-strength: 6%;
+    --icon-accent: var(--color-accent-300);
   }
 }
 
+:root[data-theme="dark"] {
+  --color-paper: #1b1812;
+  --color-surface: #242019;
+  --color-ink: #f3f2ee;
+  --color-ink-muted: #a8a29a;
+  --color-line: #3a352c;
+  --color-danger: #e0776e;
+  --shadow-card:
+    0 20px 50px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  --scrap-tint: var(--color-ink);
+  --scrap-strength: 6%;
+  --icon-accent: var(--color-accent-300);
+}
+
+/* Botões de reação do mural (curtir / comentar / sinto isso também):
+   contorno muda de cor no hover, e o ícone (coração / mão) fica
+   preenchido quando o visitante já reagiu — ver icons.tsx. */
+.reaction-btn:hover {
+  color: var(--icon-accent);
+}
+
+.icon-fill-active {
+  fill: var(--icon-accent);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Glow dourado de fundo, mesma técnica do hero do mural antigo
+   (radial-gradient ancorado no topo), só que aplicado no site inteiro
+   e sutil o bastante pra não brigar com o conteúdo. */
+.bg-glow {
+  background:
+    radial-gradient(1100px 560px at 50% -12%, color-mix(in oklch, var(--color-accent-500) 20%, transparent), transparent 70%),
+    var(--color-paper);
+  background-repeat: no-repeat;
+}
+
+/* Papéis soltos decorativos na página /confissoes. No claro usam um
+   tingimento dourado (--scrap-tint: accent-500), pra ler como papel
+   envelhecido; no escuro usam ink — replica o mural antigo, que já
+   tinha esse tom certo (ver overrides de --scrap-tint acima). */
+.confession-paper-scrap {
+  position: absolute;
+  border-radius: 2px;
+  /* As "linhas" são o vão transparente (deixam o fundo por trás aparecer),
+     não um traço colorido por cima — igual ao efeito multiply do mural
+     antigo, só que direto: o papel é a faixa de 10px com leve tingimento,
+     o vão de 2px é 100% transparente. */
+  background-image: repeating-linear-gradient(
+    color-mix(in oklch, var(--scrap-tint) var(--scrap-strength), transparent) 0 10px,
+    transparent 10px 12px
+  );
+}
+
+/* --- /mural -------------------------------------------------------------
+   Varal com pregadores + post-its "presos" no feed. Fica no background
+   normal do site (paper/surface), só os detalhes decorativos (corda,
+   pregador, textura de linhas) usam tons derivados de ink/accent pra
+   continuarem visíveis nos dois temas. */
+.mural-rope {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 32px;
+  height: 1px;
+  background: color-mix(in oklch, var(--color-ink) 20%, transparent);
+}
+
+.mural-pin,
+.mural-post-pin {
+  border-radius: 2px;
+  background: linear-gradient(var(--color-accent-300), var(--color-accent-500));
+}
+
+.mural-pin {
+  position: absolute;
+  width: 9px;
+  height: 22px;
+  top: 26px;
+}
+
+.mural-pin::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  background: var(--color-accent-900);
+}
+
+.mural-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-accent-900);
+  transform: translateX(-50%);
+}
+
+.mural-post-pin {
+  position: absolute;
+  left: 50%;
+  top: -11px;
+  transform: translateX(-50%);
+  width: 11px;
+  height: 26px;
+  box-shadow: var(--shadow-card);
+}
+
+.mural-post-pin::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 2px;
+  background: var(--color-accent-900);
+}
+
+.mural-post-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 11px;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-accent-900);
+  transform: translateX(-50%);
+}
+
+.mural-post-lines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    color-mix(in oklch, var(--color-ink) 2%, transparent) 0 1px,
+    transparent 1px 26px
+  );
+}
+
+/* Textura de "papel amassado e desdobrado" nos cards do mural — puro
+   filtro SVG procedural (ver paper-filters.tsx), sem nenhum asset de
+   imagem. Multiply em opacidade baixa deixa o texto do card intacto e
+   só acrescenta os vincos/sombras por cima. */
+.paper-texture-overlay {
+  position: absolute;
+  inset: 0;
+  /* No card do mural quem recorta os cantos é o clip-path do pai; no form
+     de compor não tem clip-path, só rounded-2xl — herdar o border-radius
+     aqui evita a textura vazar quadrada por cima dos cantos arredondados. */
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  filter: url(#paper-texture);
+  mix-blend-mode: multiply;
+  opacity: 0.14;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .paper-texture-overlay {
+    mix-blend-mode: overlay;
+    opacity: 0.35;
+  }
+}
+
+:root[data-theme="dark"] .paper-texture-overlay {
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+}
+
+/* O vinco vertical no meio do papel — ver verticalCreaseFor em
+   confession-card.tsx. Um <path> escuro colado a um claro simulando a
+   sombra + o brilho de uma dobra real. */
+.paper-crease-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+/* Sombra um pouco mais forte só nos cards já publicados no mural (não no
+   cardClass genérico, usado em vários outros lugares do site). */
+.mural-post-card {
+  box-shadow:
+    0 26px 60px -14px rgba(32, 25, 15, 0.3),
+    0 8px 20px -6px rgba(32, 25, 15, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mural-post-card {
+    box-shadow:
+      0 28px 65px -12px rgba(0, 0, 0, 0.75),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+:root[data-theme="dark"] .mural-post-card {
+  box-shadow:
+    0 28px 65px -12px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Dobra "de verdade" do form ao publicar uma confissão (ver
+   confession-fold-overlay.tsx): a metade esquerda gira em 3D a partir da
+   própria dobradiça (perspective dá o efeito 3D) e fecha sobre a metade
+   direita, parada — como fechar um livro pela lombada. Por fim dá
+   fade-out.
+
+   A metade direita fica ancorada na borda original — se nada mais fosse
+   feito, o resultado dobrado (metade da largura) ficaria "puxado" pro
+   canto direito. Pra manter centralizado, o CONTAINER inteiro (não os
+   painéis) desliza -25% da largura ao mesmo tempo que a dobra acontece,
+   empurrando a metade visível de volta pro meio da caixa original. */
+.confession-fold-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  perspective: 700px;
+  transition: opacity 0.4s ease-in;
+  animation: confession-fold-recenter 0.75s ease-in forwards;
+}
+
+@keyframes confession-fold-recenter {
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+.confession-fold-out {
+  opacity: 0;
+}
+
+.confession-fold-panel {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  border-radius: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-card);
+  backface-visibility: hidden;
+}
+
+.confession-fold-left {
+  left: 0;
+  transform-origin: right center;
+  animation: confession-fold-h 0.75s ease-in forwards;
+}
+
+.confession-fold-right-static {
+  right: 0;
+}
+
+@keyframes confession-fold-h {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(178deg);
+  }
+}
+
+/* Folha nova aparecendo no lugar, logo depois que a amassada sumiu. */
+@keyframes confession-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.confession-appear {
+  animation: confession-appear 0.35s ease-out;
 }
