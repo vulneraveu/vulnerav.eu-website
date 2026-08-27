@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { createHmac } from "node:crypto";
 
-const secretKey = process.env.SESSION_SECRET;
+const secretKey: string = process.env.SESSION_SECRET ?? "";
 if (!secretKey) throw new Error("SESSION_SECRET não configurado");
 
 // Identifica um visitante anônimo sem guardar o IP em si — só um hash,
